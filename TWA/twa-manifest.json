@@ -1,0 +1,35 @@
+{
+  "packageId": "com.yourcompany.gratitudecoins",
+  "host": "your-app.vercel.app",
+  "name": "감사 코인",
+  "launcherName": "감사코인",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#f59e0b",
+  "navigationColor": "#1a0a00",
+  "navigationColorDark": "#1a0a00",
+  "navigationDividerColor": "#f59e0b",
+  "backgroundColor": "#1a0a00",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://your-app.vercel.app/icons/icon-512x512.png",
+  "maskableIconUrl": "https://your-app.vercel.app/icons/icon-maskable-512x512.png",
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://your-app.vercel.app/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": { "enabled": false },
+    "playBilling": { "enabled": false }
+  },
+  "alphaDependencies": { "enabled": false },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://your-app.vercel.app/",
+  "minSdkVersion": 19,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "gratitude-coins"
+  }
+}

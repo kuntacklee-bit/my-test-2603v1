@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.yourcompany.gratitudecoins",
+      "sha256_cert_fingerprints": [
+        "여기에-SHA256-서명-지문-입력"
+      ]
+    }
+  }
+]

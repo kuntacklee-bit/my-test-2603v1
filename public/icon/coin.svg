@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <circle cx="256" cy="256" r="256" fill="#92400e"/>
+  <circle cx="256" cy="256" r="230" fill="#d97706"/>
+  <circle cx="256" cy="256" r="200" fill="#f59e0b"/>
+  <text x="256" y="330" font-size="220" text-anchor="middle" fill="#92400e" font-family="serif" font-weight="bold">🪙</text>
+  <text x="256" y="310" font-size="200" text-anchor="middle" fill="#7c2d12">감</text>
+</svg>
