@@ -274,34 +274,22 @@ export default function App() {
   useEffect(() => {
     const unsub = onSnapshot(DOC_REF, async snap => {
       if (snap.exists()) {
-        const data = snap.data();
-        setAppState({
-          // Firestore 데이터를 기본으로 하고, INIT_STATE는 폴백으로 사용
-          ...INIT_STATE,
-          ...data,
-          // members 배열을 처리할 때, Firestore에 저장된 상태(비밀번호, 잠금 여부 등)를 유지
-          members: (data.members || INIT_STATE.members).map((m, i) => {
-            const initialMemberState = INIT_STATE.members.find(im => im.id === m.id) || {};
-            // Firestore에 저장된 값(m)을 기본으로 하고,
-            // avatar 등 누락될 수 있는 값만 초기 상태(initialMemberState)에서 가져옵니다.
-            return {
-              ...initialMemberState, // 기본값 제공
-              ...m, // DB 값으로 덮어쓰기
-              avatar: m.avatar || initialMemberState.avatar || AVATARS[i % AVATARS.length],
-            };
-          }),
-        });
+        // Firestore에 데이터가 있으면, 해당 데이터를 직접 상태로 설정합니다.
+        // 이것은 저장된 비밀번호, 코인 수 등 모든 정보를 보존하는 가장 확실한 방법입니다.
+        setAppState(snap.data());
       } else {
-        // 첫 실행: Firestore에 초기 데이터 생성
-        await setDoc(DOC_REF, INIT_STATE)
-        setAppState({ ...INIT_STATE })
+        // 앱 첫 실행 시 Firestore에 초기 데이터(INIT_STATE)를 생성합니다.
+        await setDoc(DOC_REF, INIT_STATE);
+        setAppState({ ...INIT_STATE });
       }
     }, err => {
-      console.error('Firestore 연결 오류:', err)
-      setAppState({ ...INIT_STATE })
-    })
-    return () => unsub()
-  }, [])
+      console.error('Firestore 연결 오류:', err);
+      // 오류 발생 시 앱이 멈추지 않도록 초기 상태를 설정합니다.
+      setAppState({ ...INIT_STATE });
+    });
+
+    return () => unsub();
+  }, []);
 
   // ── Firestore 저장 ──────────────────────────────────────────────────────────
   const persist = async (partial) => {
@@ -413,7 +401,7 @@ export default function App() {
     localUser.current  = regFound.id
     localAdmin.current = false
     closeModal()
-    notify(`${regFound.name}님, 가입을 환영합니다! 🎉`)
+    notify(`${regFound.name}님, 가입을 환영합니다! 🪙`)
   }
 
   // ── 회원: 비밀번호 변경 ─────────────────────────────────────────────────
@@ -738,7 +726,7 @@ export default function App() {
                 {!isDistributed && <div style={S.warnBanner}>⏳ 이번 달 코인이 아직 지급되지 않았습니다.</div>}
                 {myReceived.length>0 && (
                   <div style={S.card}><h3 style={S.cTitle}>💌 받은 감사 메세지</h3>
-                    {myReceived.map(tx=>{const f=members.find(m=>m.id===tx.fromId);return(<div key={tx.id} style={S.txItem}><span style={{fontSize:20}}>{f?.avatar}</span><div style={{flex:1}}><div style={S.txFrom}>{f?.name}</div><div style={S.txMsg}>"{tx.message}"</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>)})}\
+                    {myReceived.map(tx=>{const f=members.find(m=>m.id===tx.fromId);return(<div key={tx.id} style={S.txItem}><span style={{fontSize:20}}>{f?.avatar}</span><div style={{flex:1}}><div style={S.txFrom}>{f?.name}</div><div style={S.txMsg}>"{tx.message}"</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>)})}
                   </div>
                 )}
                 <button style={S.btn} onClick={()=>setView('send')}>🎁 감사 코인 보내기</button>
@@ -794,11 +782,11 @@ export default function App() {
               : <>
                   <div style={S.card}><h3 style={S.cTitle}>💌 받은 코인 ({myReceived.length})</h3>
                     {myReceived.length===0 ? <p style={{color:'#78350f',fontSize:13}}>아직 없습니다</p>
-                      : myReceived.map(tx=>{const f=members.find(m=>m.id===tx.fromId);return(<div key={tx.id} style={S.txItem}><span style={{fontSize:20}}>{f?.avatar}</span><div style={{flex:1}}><div style={S.txFrom}>{f?.name}님으로부터</div><div style={S.txMsg}>"{tx.message}"</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>)})}\
+                      : myReceived.map(tx=>{const f=members.find(m=>m.id===tx.fromId);return(<div key={tx.id} style={S.txItem}><span style={{fontSize:20}}>{f?.avatar}</span><div style={{flex:1}}><div style={S.txFrom}>{f?.name}님으로부터</div><div style={S.txMsg}>"{tx.message}"</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>)})}
                   </div>
                   <div style={S.card}><h3 style={S.cTitle}>🎁 보낸 코인 ({mySent.length})</h3>
                     {mySent.length===0 ? <p style={{color:'#78350f',fontSize:13}}>아직 없습니다</p>
-                      : mySent.map(tx=>{const t2=members.find(m=>m.id===tx.toId);return(<div key={tx.id} style={S.txItem}><span style={{fontSize:20}}>{t2?.avatar}</span><div style={{flex:1}}><div style={S.txFrom}>{t2?.name}님에게</div><div style={S.txMsg}>"{tx.message}"</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>)})}\
+                      : mySent.map(tx=>{const t2=members.find(m=>m.id===tx.toId);return(<div key={tx.id} style={S.txItem}><span style={{fontSize:20}}>{t2?.avatar}</span><div style={{flex:1}}><div style={S.txFrom}>{t2?.name}님에게</div><div style={S.txMsg}>"{tx.message}"</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>)})}
                   </div>
                 </>
             }
@@ -1001,7 +989,7 @@ export default function App() {
                   <div style={S.card}>
                     <h3 style={{...S.cTitle,color:'#f87171'}}>🔑 관리자 비밀번호 변경</h3>
                     <p style={{fontSize:12,color:'#92400e',margin:'0 0 14px'}}>현재 비밀번호를 확인한 후 새 비밀번호로 변경합니다.</p>
-                    <button style={{...S.btn,background:'linear-gradient(135deg,#ef4444,#dc2626)'}} onClick={()=>setModal('adminChangePw')}>🔑 비밀번호 변경하기</button>
+                    <button style={{...S.btn,background:'linear-gradient(135deg,#ef4444,#dc2626)'}} onClick={()=>setModal('adminChangePw')}>🔑 관리자 비밀번호 변경하기</button>
                   </div>
                 )}
               </>
