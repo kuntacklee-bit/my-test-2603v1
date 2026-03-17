@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 
 const InstallPrompt = () => {
@@ -7,29 +6,26 @@ const InstallPrompt = () => {
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event) => {
-      // 기본 미니 정보 표시줄 표시 방지
       event.preventDefault();
-      // 나중에 트리거할 수 있도록 이벤트 저장
       setInstallPromptEvent(event);
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    // 앱이 이미 설치되었는지 확인
-    window.addEventListener('appinstalled', () => {
-      // 설치 프롬프트 숨기기
+    const handleAppInstalled = () => {
       setInstallPromptEvent(null);
       setIsAppInstalled(true);
-    });
-    
-    // PWA 모드(독립 실행형)인지 확인
+    };
+
+    // Check if the app is already installed when the component mounts
     if (window.matchMedia('(display-mode: standalone)').matches) {
-        setIsAppInstalled(true);
+      setIsAppInstalled(true);
+    } else {
+      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.addEventListener('appinstalled', handleAppInstalled);
     }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', () => {});
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
@@ -37,18 +33,14 @@ const InstallPrompt = () => {
     if (!installPromptEvent) {
       return;
     }
-    // 설치 프롬프트 표시
     installPromptEvent.prompt();
-    // 사용자의 응답을 기다림
     const { outcome } = await installPromptEvent.userChoice;
-    // 프롬프트를 사용했으므로 다시 사용할 수 없도록 초기화
-    setInstallPromptEvent(null);
     if (outcome === 'accepted') {
-        setIsAppInstalled(true);
+      setIsAppInstalled(true);
     }
+    setInstallPromptEvent(null);
   };
 
-  // 앱이 설치되지 않았고, 설치 프롬프트 이벤트를 사용할 수 있을 때만 설치 버튼 표시
   if (isAppInstalled || !installPromptEvent) {
     return null;
   }
@@ -61,7 +53,7 @@ const InstallPrompt = () => {
         bottom: '10px',
         left: '10px',
         right: '10px',
-        backgroundColor: '#f59e0b', // manifest theme_color
+        backgroundColor: '#f59e0b',
         color: 'white',
         padding: '12px',
         borderRadius: '8px',
@@ -76,7 +68,7 @@ const InstallPrompt = () => {
       <button
         onClick={handleInstallClick}
         style={{
-          backgroundColor: '#d97706', // 버튼을 위한 더 어두운 색상
+          backgroundColor: '#d97706',
           color: 'white',
           border: 'none',
           padding: '8px 16px',
