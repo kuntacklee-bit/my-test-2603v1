@@ -81,7 +81,7 @@ function HistoryTab({ transactions, members, onExport }) {
           </div>
           <div>
             <label style={S.lbl}>회원 필터</label>
-            <select value={filterMember} onChange={e=>setFilterMember(e.target.value)} style={S.sel}>
+            <select value={filterMember} onChange={e=>setFilterMember(e.target.value)} style={S.sel} className="custom-select">
               <option value="">전체 회원</option>
               {members.filter(m=>m.password).map(m=>(
                 <option key={m.id} value={m.id}>{m.name} ({m.team})</option>
@@ -535,6 +535,12 @@ export default function App() {
   // ── 렌더 ─────────────────────────────────────────────────────────────────
   return (
     <div style={S.app}>
+       <style>{`
+        .custom-select option {
+          background: #1f0e00;
+          color: #fef3c7;
+        }
+      `}</style>
       <div style={S.orb1}/><div style={S.orb2}/>
 
       {/* 동기화 표시 */}
@@ -759,7 +765,7 @@ export default function App() {
                       <span style={{display:'flex',gap:4,fontSize:20}}>{[...Array(myCoins)].map((_,i)=><span key={i}>🪙</span>)}</span>
                     </div>
                     <label style={S.lbl}>받을 회원</label>
-                    <select style={S.sel} value={sendTo} onChange={e=>setSendTo(e.target.value)}>
+                    <select style={S.sel} value={sendTo} onChange={e=>setSendTo(e.target.value)} className="custom-select">
                       <option value="">선택해주세요</option>
                       {regMembers.filter(m=>m.id!==currentUser.id).map(m=>(
                         <option key={m.id} value={m.id}>{m.avatar} {m.name} ({m.team} · {m.part})</option>
@@ -866,7 +872,7 @@ export default function App() {
                         <div><label style={S.lbl}>지급 월</label><input type="month" style={{...S.inp,boxSizing:'border-box'}} value={distMonth} onChange={e=>setDistMonth(e.target.value)} /></div>
                         <div><label style={S.lbl}>기본 코인 수</label>
                           <div style={{display:'flex',alignItems:'center',gap:6}}>
-                            <input type="number" min={1} max={99} style={{...S.inp,textAlign:'center',fontSize:20,fontWeight:800,color:'#fbbf24',boxSizing:'border-box'}} value={bulkDefault} onChange={e=>{const v=e.target.value; setBulkDefault(v===''?'':Math.max(1,Number(v)))}} onBlur={e=>{if(e.target.value===''||Number(e.target.value)<1) setBulkDefault(1)}} />
+                            <input type="number" min={1} max={99} style={{...S.inp,textAlign:'center',fontSize:20,fontWeight:800,color:'#fbbf24',boxSizing:'border-box'}} value={bulkDefault} onChange={e=>{const v=e.target.value; setBulkDefault(v===''?null:Math.max(1,Number(v)))}} onBlur={e=>{if(e.target.value===''||Number(e.target.value)<1) setBulkDefault(1)}} />
                             <span style={{color:'#92400e',fontSize:13}}>개</span>
                           </div>
                         </div>
