@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const InstallPrompt = () => {
+const InstallPrompt = ({ view }) => {
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
@@ -18,7 +18,6 @@ const InstallPrompt = () => {
       setShowInstallBanner(false);
     };
 
-    // Check if the app is already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsAppInstalled(true);
     } else {
@@ -35,11 +34,9 @@ const InstallPrompt = () => {
 
   const getManualInstallMessage = () => {
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-    // Provide specific instructions for Android
     if (/android/i.test(userAgent)) {
       return '브라우저 메뉴(우측 상단 ⋮)에서 \'홈 화면에 추가\'를 선택하여 설치하세요.';
     }
-    // Generic message for other platforms
     return '브라우저 메뉴에서 \'홈 화면에 추가\'하여 앱을 설치할 수 있습니다.';
   };
 
@@ -53,13 +50,11 @@ const InstallPrompt = () => {
       setInstallPromptEvent(null);
       setShowInstallBanner(false);
     } else {
-      // Show manual installation instructions if the prompt isn't available
       alert(getManualInstallMessage());
     }
   };
 
-  // Do not show the banner if the app is installed or the banner is explicitly hidden
-  if (isAppInstalled || !showInstallBanner) {
+  if (isAppInstalled || !showInstallBanner || view !== 'home') {
     return null;
   }
 

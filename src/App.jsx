@@ -588,7 +588,7 @@ export default function App() {
       {syncing && <div style={S.syncBadge}>☁️ 저장 중...</div>}
 
       {/* PWA Install Banner */}
-      <InstallPrompt />
+      <InstallPrompt view={view} />
 
       {/* iOS Install Guide */}
       <IOSInstallBanner />
