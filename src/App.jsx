@@ -59,7 +59,7 @@ async function saveExcel(wb, fileName) {
 }
 
 // ─── HistoryTab ───────────────────────────────────────────────────────────────
-function HistoryTab({ transactions, members, onExport }) {
+function HistoryTab({ transactions, members, onExport, onResetAll }) {
   const cm = getCurrentMonth()
   const [filterMonth,  setFilterMonth]  = useState(cm)
   const [filterMember, setFilterMember] = useState('')
@@ -94,8 +94,8 @@ function HistoryTab({ transactions, members, onExport }) {
           <div style={{marginLeft:'auto',display:'flex',gap:8}}>
             <button style={{background:'rgba(34,197,94,0.15)',border:'1px solid rgba(34,197,94,0.3)',color:'#86efac',padding:'7px 14px',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}
               onClick={()=>onExport(filtered, filterMonth)}>📥 Excel 다운로드</button>
-            <button style={{background:'rgba(107,114,128,0.15)',border:'1px solid rgba(107,114,128,0.3)',color:'#9ca3af',padding:'7px 12px',borderRadius:8,fontSize:12,cursor:'pointer'}}
-              onClick={()=>{setFilterMonth('');setFilterMember('')}}>초기화</button>
+            <button style={{background:'rgba(239, 68, 68, 0.15)',border:'1px solid rgba(239, 68, 68, 0.3)',color:'#f87171',padding:'7px 14px',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}
+              onClick={onResetAll}>🚨 전체 이력 삭제</button>
           </div>
         </div>
       </div>
@@ -115,7 +115,7 @@ function HistoryTab({ transactions, members, onExport }) {
                     <div><div style={{fontSize:12,fontWeight:700}}>{f?.avatar} {f?.name}</div><div style={{fontSize:10,color:'#78350f'}}>{f?.team}</div></div>
                     <div><div style={{fontSize:12,fontWeight:700}}>{t2?.avatar} {t2?.name}</div><div style={{fontSize:10,color:'#78350f'}}>{t2?.team}</div></div>
                     <div style={{textAlign:'center',fontSize:16}}>🪙</div>
-                    <div style={{fontSize:12,color:'#d97706',fontStyle:'italic',wordBreak:'break-all'}}>"{tx.message}"</div>
+                    <div style={{fontSize:12,color:'#d97706',fontStyle:'italic',wordBreak:'break-all'}}>&quot;{tx.message}&quot;</div>
                   </div>
                 )
               })}
@@ -228,6 +228,7 @@ export default function App() {
   const { prompt: installPrompt, isInstalled, install } = useInstallPrompt()
   const [view,       setView]       = useState('home')
   const [modal,      setModal]      = useState(null)
+  const [confirmModal, setConfirmModal] = useState(null) // *** 추가: 커스텀 확인 모달 상태
   const [notif,      setNotif]      = useState(null)
   const [adminTab,   setAdminTab]   = useState('coins')
   const localUser    = useRef(null)   // 로그인한 사용자 ID (로컬 세션)
@@ -274,17 +275,13 @@ export default function App() {
   useEffect(() => {
     const unsub = onSnapshot(DOC_REF, async snap => {
       if (snap.exists()) {
-        // Firestore에 데이터가 있으면, 해당 데이터를 직접 상태로 설정합니다.
-        // 이것은 저장된 비밀번호, 코인 수 등 모든 정보를 보존하는 가장 확실한 방법입니다.
         setAppState(snap.data());
       } else {
-        // 앱 첫 실행 시 Firestore에 초기 데이터(INIT_STATE)를 생성합니다.
         await setDoc(DOC_REF, INIT_STATE);
         setAppState({ ...INIT_STATE });
       }
     }, err => {
       console.error('Firestore 연결 오류:', err);
-      // 오류 발생 시 앱이 멈추지 않도록 초기 상태를 설정합니다.
       setAppState({ ...INIT_STATE });
     });
 
@@ -355,7 +352,7 @@ export default function App() {
       const fails   = (m.failedAttempts??0)+1
       const nowLock = fails >= MAX_FAIL
       persist({ members: members.map(x=>x.id===m.id?{...x,failedAttempts:fails,locked:nowLock}:x) })
-      setLoginErr(nowLock ? '비밀번호 5회 오류. 계정이 잠겼습니다.' : `비밀번호 오류 (${MAX_FAIL-fails}회 남음)`)
+      setLoginErr(nowLock ? `비밀번호 ${MAX_FAIL}회 오류. 계정이 잠겼습니다.` : `비밀번호 오류 (${MAX_FAIL-fails}회 남음)`)
       return
     }
     persist({ members: members.map(x=>x.id===m.id?{...x,failedAttempts:0,locked:false}:x) })
@@ -501,17 +498,16 @@ export default function App() {
 
   // ── 코인 ─────────────────────────────────────────────────────────────────
   const distributeAll = () => {
-    if (distributed[distMonth]) return notify('이미 해당 월에 지급했습니다.','err')
-    const reg = members.filter(m=>m.password)
-    if (!reg.length) return notify('가입 완료된 회원이 없습니다.','err')
-    const newAllot = {...allotments,[distMonth]:{...(allotments[distMonth]||{})}}
-    reg.forEach(m=>{
-      const amt = customCoins[m.id]!==undefined ? Number(customCoins[m.id]) : Number(bulkDefault)||1
-      newAllot[distMonth][m.id] = (newAllot[distMonth][m.id]??0)+amt
-    })
-    persist({ allotments:newAllot, distributed:{...distributed,[distMonth]:{date:todayStr(),defaultAmt:bulkDefault}} })
-    setCustomCoins({})
-    notify(`${distMonth} 코인 지급 완료! 🪙`)
+    if (distributed[distMonth]) return notify('이미 해당 월에 지급했습니다.','err');
+    if (!members.length) return notify('회원이 없습니다.','err');
+    const newAllot = {...allotments,[distMonth]:{...(allotments[distMonth]||{})}};
+    members.forEach(m=>{
+      const amt = customCoins[m.id]!==undefined ? Number(customCoins[m.id]) : Number(bulkDefault)||1;
+      newAllot[distMonth][m.id] = (newAllot[distMonth][m.id]??0)+amt;
+    });
+    persist({ allotments:newAllot, distributed:{...distributed,[distMonth]:{date:todayStr(),defaultAmt:bulkDefault}} });
+    setCustomCoins({});
+    notify(`${distMonth} 코인 지급 완료! 🪙`);
   }
 
   const giveOne = (memberId, amount) => {
@@ -519,6 +515,59 @@ export default function App() {
     persist({ allotments:newAllot })
     notify(`${members.find(x=>x.id===memberId)?.name}님에게 ${amount}개 지급.`)
   }
+
+  // *** 추가: 회원 데이터 초기화 함수 ***
+  const resetAllMembersAndData = () => {
+    if (!isAdmin) {
+      notify('관리자만 실행할 수 있습니다.', 'err');
+      return;
+    }
+    try {
+      persist({
+        ...INIT_STATE,
+        adminPassword: appState.adminPassword, // 관리자 비밀번호 유지
+      });
+      notify('모든 회원 및 관련 데이터가 초기화되었습니다.');
+    } catch (error) {
+      console.error("회원 데이터 초기화 중 오류 발생:", error);
+      notify('회원 데이터 초기화 중 오류가 발생했습니다.', 'err');
+    }
+  };
+
+  const resetAllCoins = () => {
+    if (!isAdmin) {
+      notify('관리자만 실행할 수 있습니다.', 'err');
+      return;
+    }
+    const monthToReset = distMonth;
+    try {
+      const newAllot = { ...allotments };
+      newAllot[monthToReset] = {};
+      members.forEach(m => {
+        newAllot[monthToReset][m.id] = 0;
+      });
+      persist({ allotments: newAllot });
+      setCustomCoins({});
+      notify(`${monthToReset} 코인 초기화 완료.`);
+    } catch (error) {
+      console.error("코인 초기화 중 오류 발생:", error);
+      notify('코인 초기화 중 오류가 발생했습니다.', 'err');
+    }
+  };
+
+  const resetAllTransactions = () => {
+    if (!isAdmin) {
+      notify('관리자만 실행할 수 있습니다.', 'err');
+      return;
+    }
+    try {
+      persist({ transactions: [] });
+      notify('모든 거래 이력이 삭제되었습니다.');
+    } catch (error) {
+      console.error("거래 이력 삭제 중 오류 발생:", error);
+      notify('거래 이력 삭제 중 오류가 발생했습니다.', 'err');
+    }
+  };
 
   const sendCoin = () => {
     if (!currentUser||!sendTo||!sendMsg.trim()) return notify('모든 항목을 입력해주세요.','err')
@@ -569,6 +618,28 @@ export default function App() {
 
       {/* 알림 */}
       {notif && <div style={{...S.notif,...(notif.type==='err'?S.notifErr:S.notifOk)}}>{notif.msg}</div>}
+
+      {/* *** 추가: 커스텀 확인 모달 *** */}
+      {confirmModal && (
+        <div style={S.overlay} onClick={() => setConfirmModal(null)}>
+          <div style={S.card2} onClick={e => e.stopPropagation()}>
+            <div style={S.mIcon}>🚨</div>
+            <h2 style={{...S.mTitle, color: '#f87171'}}>정말로 실행하시겠습니까?</h2>
+            <p style={S.mSub}>{confirmModal.message}</p>
+            <div style={{display: 'flex', gap: 10, marginTop: 16}}>
+              <button style={{...S.btnGhost, width: '50%', flex: 1}} onClick={() => setConfirmModal(null)}>
+                취소
+              </button>
+              <button style={{...S.btn, background: 'linear-gradient(135deg,#ef4444,#dc2626)', width: '50%', flex: 1}} onClick={() => {
+                confirmModal.onConfirm();
+                setConfirmModal(null);
+              }}>
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── 로그인 모달 ── */}
       {modal==='login' && (
@@ -732,7 +803,7 @@ export default function App() {
                 {!isDistributed && <div style={S.warnBanner}>⏳ 이번 달 코인이 아직 지급되지 않았습니다.</div>}
                 {myReceived.length>0 && (
                   <div style={S.card}><h3 style={S.cTitle}>💌 받은 감사 메세지</h3>
-                    {myReceived.map(tx=>{const f=members.find(m=>m.id===tx.fromId);return(<div key={tx.id} style={S.txItem}><span style={{fontSize:20}}>{f?.avatar}</span><div style={{flex:1}}><div style={S.txFrom}>{f?.name}</div><div style={S.txMsg}>"{tx.message}"</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>)})}
+                    {myReceived.map(tx=>{const f=members.find(m=>m.id===tx.fromId);return(<div key={tx.id} style={S.txItem}><span style={{fontSize:20}}>{f?.avatar}</span><div style={{flex:1}}><div style={S.txFrom}>{f?.name}</div><div style={S.txMsg}>&quot;{tx.message}&quot;</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>)})}
                   </div>
                 )}
                 <button style={S.btn} onClick={()=>setView('send')}>🎁 감사 코인 보내기</button>
@@ -788,11 +859,11 @@ export default function App() {
               : <>
                   <div style={S.card}><h3 style={S.cTitle}>💌 받은 코인 ({myReceived.length})</h3>
                     {myReceived.length===0 ? <p style={{color:'#78350f',fontSize:13}}>아직 없습니다</p>
-                      : myReceived.map(tx=>{const f=members.find(m=>m.id===tx.fromId);return(<div key={tx.id} style={S.txItem}><span style={{fontSize:20}}>{f?.avatar}</span><div style={{flex:1}}><div style={S.txFrom}>{f?.name}님으로부터</div><div style={S.txMsg}>"{tx.message}"</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>)})}
+                      : myReceived.map(tx=>{const f=members.find(m=>m.id===tx.fromId);return(<div key={tx.id} style={S.txItem}><span style={{fontSize:20}}>{f?.avatar}</span><div style={{flex:1}}><div style={S.txFrom}>{f?.name}님으로부터</div><div style={S.txMsg}>&quot;{tx.message}&quot;</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>)})}
                   </div>
                   <div style={S.card}><h3 style={S.cTitle}>🎁 보낸 코인 ({mySent.length})</h3>
                     {mySent.length===0 ? <p style={{color:'#78350f',fontSize:13}}>아직 없습니다</p>
-                      : mySent.map(tx=>{const t2=members.find(m=>m.id===tx.toId);return(<div key={tx.id} style={S.txItem}><span style={{fontSize:20}}>{t2?.avatar}</span><div style={{flex:1}}><div style={S.txFrom}>{t2?.name}님에게</div><div style={S.txMsg}>"{tx.message}"</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>)})}
+                      : mySent.map(tx=>{const t2=members.find(m=>m.id===tx.toId);return(<div key={tx.id} style={S.txItem}><span style={{fontSize:20}}>{t2?.avatar}</span><div style={{flex:1}}><div style={S.txFrom}>{t2?.name}님에게</div><div style={S.txMsg}>&quot;{tx.message}&quot;</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>)})}
                   </div>
                 </>
             }
@@ -881,7 +952,7 @@ export default function App() {
                         ? <div style={S.okBanner}>✅ {distMonth} 완료 (기본 {distributed[distMonth].defaultAmt}개)</div>
                         : <div style={{...S.warnBanner,marginBottom:12}}>⏳ {distMonth} 아직 지급 전</div>}
                       <div style={{maxHeight:280,overflowY:'auto'}}>
-                        {regMembers.map(m=>(
+                        {members.map(m=>(
                           <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
                             <span style={{fontSize:18}}>{m.avatar}</span>
                             <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,fontSize:13}}>{m.name}</div><div style={{fontSize:10,color:'#78350f',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m.team} · {m.part}</div></div>
@@ -891,7 +962,7 @@ export default function App() {
                               value={customCoins[m.id]??''} onChange={e=>setCustomCoins({...customCoins,[m.id]:e.target.value})} />
                           </div>
                         ))}
-                        {regMembers.length===0 && <p style={{color:'#78350f',fontSize:13}}>가입 완료된 회원이 없습니다.</p>}
+                        {members.length===0 && <p style={{color:'#78350f',fontSize:13}}>회원이 없습니다.</p>}
                       </div>
                       <button style={{...S.btn,marginTop:14,...(distributed[distMonth]?{background:'rgba(107,114,128,0.3)',cursor:'not-allowed'}:{})}}
                         onClick={distributeAll} disabled={!!distributed[distMonth]}>
@@ -900,8 +971,21 @@ export default function App() {
                     </div>
                     <div style={S.card}>
                       <h3 style={S.cTitle}>➕ 개별 추가 지급</h3>
-                      {regMembers.map(m=><IndividualRow key={m.id} member={m} currentCoins={getCoins(m.id,distMonth)} onGive={giveOne} />)}
-                      {regMembers.length===0 && <p style={{color:'#78350f',fontSize:13}}>가입 완료된 회원이 없습니다.</p>}
+                      {members.map(m=><IndividualRow key={m.id} member={m} currentCoins={getCoins(m.id,distMonth)} onGive={giveOne} />)}
+                      {members.length===0 && <p style={{color:'#78350f',fontSize:13}}>회원이 없습니다.</p>}
+                    </div>
+                    <div style={{...S.card, border: '1px solid rgba(239, 68, 68, 0.4)'}}>
+                      <h3 style={{...S.cTitle, color: '#f87171'}}>🚨 위험 구역</h3>
+                      <button
+                        style={{...S.btn, background: 'linear-gradient(135deg,#7f1d1d,#b91c1c)', marginTop: 8}}
+                        onClick={() => setConfirmModal({
+                          message: `${distMonth} 월의 모든 코인을 0으로 초기화합니다. 이 작업은 되돌릴 수 없습니다.`,
+                          onConfirm: resetAllCoins
+                        })}
+                      >
+                        🗑️ {distMonth} 코인 초기화
+                      </button>
+                      <p style={{fontSize:12, color:'#9ca3af', margin:'10px 0 0', textAlign:'center'}}>이 버튼은 현재 선택된 월의 모든 회원의 코인을 0으로 되돌립니다.</p>
                     </div>
                   </>
                 )}
@@ -962,12 +1046,36 @@ export default function App() {
                         ))}
                       </div>
                     </div>
+                    {/* *** 추가: 위험 구역 *** */}
+                    <div style={{...S.card, border: '1px solid rgba(239, 68, 68, 0.4)'}}>
+                      <h3 style={{...S.cTitle, color: '#f87171'}}>🚨 위험 구역</h3>
+                      <button
+                        style={{...S.btn, background: 'linear-gradient(135deg,#7f1d1d,#b91c1c)', marginTop: 8}}
+                        onClick={() => setConfirmModal({
+                          message: '모든 회원을 초기 목록으로 되돌리고, 관련된 모든 코인과 거래 이력을 삭제합니다. 이 작업은 되돌릴 수 없습니다.',
+                          onConfirm: resetAllMembersAndData
+                        })}
+                      >
+                        🗑️ 회원 데이터 초기화
+                      </button>
+                      <p style={{fontSize:12, color:'#9ca3af', margin:'10px 0 0', textAlign:'center'}}>
+                        관리자 비밀번호를 제외한 모든 데이터가 초기 상태로 돌아갑니다.
+                      </p>
+                    </div>
                   </>
                 )}
 
                 {/* ── 이력 탭 ── */}
                 {adminTab==='txHistory' && (
-                  <HistoryTab transactions={transactions} members={members} onExport={exportHistory} />
+                  <HistoryTab
+                    transactions={transactions}
+                    members={members}
+                    onExport={exportHistory}
+                    onResetAll={() => setConfirmModal({
+                      message: '모든 거래 이력을 정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+                      onConfirm: resetAllTransactions
+                    })}
+                  />
                 )}
 
                 {/* ── 통계 탭 ── */}
@@ -1021,7 +1129,7 @@ const S = {
   card2:{background:'#1f0e00',border:'1px solid rgba(251,191,36,0.2)',borderRadius:22,padding:28,width:'100%',maxWidth:370,boxShadow:'0 24px 60px rgba(0,0,0,0.6)'},
   mIcon:{fontSize:44,textAlign:'center',marginBottom:6},
   mTitle:{margin:'0 0 3px',fontSize:21,fontWeight:900,color:'#fbbf24',textAlign:'center'},
-  mSub:{margin:'0 0 16px',color:'#92400e',fontSize:13,textAlign:'center'},
+  mSub:{margin:'0 0 16px',color:'#92400e',fontSize:13,textAlign:'center',lineHeight:1.6},
   header:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'13px 16px',borderBottom:'1px solid rgba(251,191,36,0.1)',background:'rgba(0,0,0,0.35)',backdropFilter:'blur(12px)',position:'sticky',top:0,zIndex:100,flexWrap:'wrap',gap:8},
   logoText:{fontSize:16,fontWeight:800,color:'#fbbf24'},
   logoSub:{fontSize:10,color:'#92400e'},
@@ -1032,9 +1140,9 @@ const S = {
   regBtn:{background:'rgba(251,191,36,0.12)',border:'1px solid rgba(251,191,36,0.25)',borderRadius:18,padding:'6px 14px',color:'#fbbf24',fontWeight:700,cursor:'pointer',fontSize:13},
   adminBtn:{background:'rgba(239,68,68,0.13)',border:'1px solid rgba(239,68,68,0.22)',borderRadius:18,padding:'6px 13px',color:'#f87171',fontWeight:700,cursor:'pointer',fontSize:13},
   nav:{display:'flex',borderBottom:'1px solid rgba(251,191,36,0.07)',background:'rgba(0,0,0,0.18)',overflowX:'auto'},
-  navBtn:{display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'9px 0',background:'transparent',border:'none',color:'#78350f',cursor:'pointer',fontWeight:600,flex:1,minWidth:56},
-  navActive:{color:'#fbbf24',borderBottom:'2px solid #fbbf24'},
-  navAdmActive:{color:'#f87171',borderBottom:'2px solid #ef4444'},
+  navBtn:{display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'9px 0',background:'transparent',border:0,color:'#78350f',cursor:'pointer',fontWeight:600,flex:1,minWidth:56,borderBottom:'2px solid transparent'},
+  navActive:{color:'#fbbf24',borderBottomColor:'#fbbf24'},
+  navAdmActive:{color:'#f87171',borderBottomColor:'#ef4444'},
   main:{maxWidth:620,margin:'0 auto',padding:'18px 14px',minHeight:'calc(100vh - 108px)'},
   sec:{display:'flex',flexDirection:'column',gap:15},
   pTitle:{margin:0,fontSize:21,fontWeight:800,color:'#fbbf24'},
