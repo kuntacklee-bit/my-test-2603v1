@@ -43,7 +43,7 @@ const InstallPrompt = () => {
       setShowInstallBanner(false);
     } else {
       // Provide instructions for manual installation
-      alert('브라우저 메뉴에서 \'홈 화면에 추가\'를 선택하여 설치할 수 있습니다.');
+      alert('브라우저 메뉴(우측 상단 ⋮)에서 \'홈 화면에 추가\'를 선택하여 설치할 수 있습니다.');
     }
   };
 
