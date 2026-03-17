@@ -3,35 +3,38 @@ import { useState, useEffect } from 'react';
 const InstallPrompt = ({ view }) => {
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [showBanner, setShowBanner] = useState(false);
 
+  // Effect to setup listeners and decide initial visibility.
   useEffect(() => {
-    const handleBeforeInstallPrompt = (event) => {
-      event.preventDefault();
-      setInstallPromptEvent(event);
-      setShowInstallBanner(true);
-    };
-
-    const handleAppInstalled = () => {
-      setInstallPromptEvent(null);
-      setIsAppInstalled(true);
-      setShowInstallBanner(false);
-    };
+    const isDismissed = sessionStorage.getItem('installBannerDismissed') === 'true';
+    if (isDismissed) {
+      return;
+    }
 
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsAppInstalled(true);
     } else {
+      const handleBeforeInstallPrompt = (event) => {
+        event.preventDefault();
+        setInstallPromptEvent(event);
+      };
       window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.addEventListener('appinstalled', handleAppInstalled);
-      setShowInstallBanner(true); // Always show banner if not installed
+      setShowBanner(true); // Always show if not installed and not dismissed.
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      };
     }
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
   }, []);
 
+  // Effect to dismiss banner for the session when navigating away from home.
+  useEffect(() => {
+    if (showBanner && view !== 'home') {
+      setShowBanner(false);
+      sessionStorage.setItem('installBannerDismissed', 'true');
+    }
+  }, [view, showBanner]);
+  
   const getManualInstallMessage = () => {
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
     if (/android/i.test(userAgent)) {
@@ -41,20 +44,23 @@ const InstallPrompt = ({ view }) => {
   };
 
   const handleInstallClick = async () => {
+    // Hide and dismiss for the session after interaction.
+    setShowBanner(false);
+    sessionStorage.setItem('installBannerDismissed', 'true');
+
     if (installPromptEvent) {
       installPromptEvent.prompt();
       const { outcome } = await installPromptEvent.userChoice;
       if (outcome === 'accepted') {
         setIsAppInstalled(true);
       }
-      setInstallPromptEvent(null);
-      setShowInstallBanner(false);
     } else {
       alert(getManualInstallMessage());
     }
   };
 
-  if (isAppInstalled || !showInstallBanner || view !== 'home') {
+  // The condition to render the banner.
+  if (isAppInstalled || !showBanner || view !== 'home') {
     return null;
   }
 
