@@ -813,9 +813,9 @@ export default function App() {
                 <div style={{fontSize:72}}>🪙</div>
                 <h1 style={{margin:0,fontSize:32,fontWeight:900,color:'#fbbf24'}}>감사 코인</h1>
                 <p style={{color:'#d97706',lineHeight:1.8,fontSize:15,margin:0}}>동료에게 감사한 마음을 코인으로 전달하세요.<br/>관리자가 매월 코인을 수동 지급합니다.</p>
-                <div style={{display:'flex',gap:10,marginTop:8}}>
-                  <button style={S.btn} onClick={()=>setModal('login')}>로그인</button>
-                  <button style={{...S.btn,background:'rgba(251,191,36,0.15)',color:'#fbbf24',border:'1px solid rgba(251,191,36,0.3)'}} onClick={()=>setModal('register')}>회원가입</button>
+                <div style={{display: 'flex', gap: 10, marginTop: 8, width: '100%', maxWidth: 320}}>
+                  <button style={{...S.btn, flex: 1}} onClick={()=>setModal('login')}>로그인</button>
+                  <button style={{...S.btn, background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)', flex: 1}} onClick={()=>setModal('register')}>회원가입</button>
                 </div>
               </div>
             )}
