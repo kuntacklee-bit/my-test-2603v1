@@ -4,6 +4,7 @@ import { db } from './firebase';
 import {
   doc, onSnapshot, setDoc, getDoc
 } from 'firebase/firestore';
+import InstallPrompt from './InstallPrompt';
 
 // ─── Constants ───────────────────────────────────────────────────────────────────
 const MAX_FAIL = 5;
@@ -162,35 +163,6 @@ function Inp({ label, type = 'text', placeholder, value, onChange, onEnter, erro
   );
 }
 
-
-// ─── PWA Install Prompt ────────────────────────────────────────────────────────
-function useInstallPrompt() {
-  const [prompt, setPrompt] = useState(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-
-  useEffect(() => {
-    // App is already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-      return;
-    }
-    const handler = e => { e.preventDefault(); setPrompt(e); };
-    window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => { setIsInstalled(true); setPrompt(null); });
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
-  const install = async () => {
-    if (!prompt) return;
-    prompt.prompt();
-    const { outcome } = await prompt.userChoice;
-    if (outcome === 'accepted') setPrompt(null);
-  };
-
-  return { prompt, isInstalled, install };
-}
-
-
 // ─── iOS Install Banner ────────────────────────────────────────────────────────
 function IOSInstallBanner() {
   const [show, setShow] = useState(false);
@@ -227,7 +199,6 @@ function IOSInstallBanner() {
 export default function App() {
   const [appState, setAppState] = useState(null);
   const [syncing, setSyncing] = useState(false); // Saving indicator
-  const { prompt: installPrompt, isInstalled, install } = useInstallPrompt();
   const [view, setView] = useState('home');
   const [modal, setModal] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null); // *** Added: Custom confirm modal state
@@ -617,22 +588,7 @@ export default function App() {
       {syncing && <div style={S.syncBadge}>☁️ 저장 중...</div>}
 
       {/* PWA Install Banner */}
-      {installPrompt && !isInstalled && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'linear-gradient(135deg,#1c0800,#2d1200)', borderTop: '1px solid rgba(251,191,36,0.3)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, zIndex: 998, boxShadow: '0 -4px 20px rgba(0,0,0,0.5)' }}>
-          <span style={{ fontSize: 32 }}>🪙</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: '#fbbf24' }}>앱으로 설치하기</div>
-            <div style={{ fontSize: 12, color: '#92400e', marginTop: 2 }}>홈 화면에 추가하면 앱처럼 사용할 수 있어요</div>
-          </div>
-          <button onClick={install}
-            style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', border: 'none', borderRadius: 10, padding: '9px 18px', color: '#1a0a00', fontWeight: 800, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            설치
-          </button>
-          <button onClick={() => setPrompt && null}
-            style={{ background: 'transparent', border: 'none', color: '#78350f', cursor: 'pointer', fontSize: 18, padding: '4px 8px' }}
-            onClick={() => { document.querySelector('[data-install-banner]')?.remove(); }}>✕</button>
-        </div>
-      )}
+      <InstallPrompt />
 
       {/* iOS Install Guide */}
       <IOSInstallBanner />
