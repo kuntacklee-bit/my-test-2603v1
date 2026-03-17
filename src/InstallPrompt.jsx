@@ -3,50 +3,51 @@ import { useState, useEffect } from 'react';
 const InstallPrompt = ({ view }) => {
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
-  const [showBanner, setShowBanner] = useState(false);
 
-  // Effect to setup listeners and decide initial visibility.
+  // A single state to track if the banner should be hidden for this session.
+  // Initialize from sessionStorage.
+  const [isDismissed, setIsDismissed] = useState(
+    () => sessionStorage.getItem('installBannerDismissed') === 'true'
+  );
+
+  // This effect runs once on mount to set up listeners.
   useEffect(() => {
-    const isDismissed = sessionStorage.getItem('installBannerDismissed') === 'true';
-    if (isDismissed) {
-      return;
-    }
+    // If already installed or dismissed, do nothing.
+    if (isAppInstalled || isDismissed) return;
 
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsAppInstalled(true);
-    } else {
-      const handleBeforeInstallPrompt = (event) => {
-        event.preventDefault();
-        setInstallPromptEvent(event);
-      };
-      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      setShowBanner(true); // Always show if not installed and not dismissed.
-      return () => {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      };
+      return;
     }
-  }, []);
 
-  // Effect to dismiss banner for the session when navigating away from home.
+    const handleBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      setInstallPromptEvent(event);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, [isAppInstalled, isDismissed]);
+
+  // This effect runs when the view changes, to dismiss the banner for the session
+  // after the user navigates away from the home screen.
   useEffect(() => {
-    if (showBanner && view !== 'home') {
-      setShowBanner(false);
+    // If not on home view AND the banner has not been dismissed yet
+    if (view !== 'home' && !isDismissed) {
+      // Dismiss it for the rest of the session.
       sessionStorage.setItem('installBannerDismissed', 'true');
+      setIsDismissed(true);
     }
-  }, [view, showBanner]);
-  
-  const getManualInstallMessage = () => {
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-    if (/android/i.test(userAgent)) {
-      return '브라우저 메뉴(우측 상단 ⋮)에서 \'홈 화면에 추가\'를 선택하여 설치하세요.';
-    }
-    return '브라우저 메뉴에서 \'홈 화면에 추가\'하여 앱을 설치할 수 있습니다.';
-  };
+  }, [view, isDismissed]);
 
   const handleInstallClick = async () => {
-    // Hide and dismiss for the session after interaction.
-    setShowBanner(false);
-    sessionStorage.setItem('installBannerDismissed', 'true');
+    // When user interacts, dismiss it permanently for the session.
+    if (!isDismissed) {
+      sessionStorage.setItem('installBannerDismissed', 'true');
+      setIsDismissed(true);
+    }
 
     if (installPromptEvent) {
       installPromptEvent.prompt();
@@ -55,12 +56,17 @@ const InstallPrompt = ({ view }) => {
         setIsAppInstalled(true);
       }
     } else {
-      alert(getManualInstallMessage());
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+      if (/android/i.test(userAgent)) {
+        alert('브라우저 메뉴(우측 상단 ⋮)에서 \'홈 화면에 추가\'를 선택하여 설치하세요.');
+      } else {
+        alert('브라우저 메뉴에서 \'홈 화면에 추가\'하여 앱을 설치할 수 있습니다.');
+      }
     }
   };
 
-  // The condition to render the banner.
-  if (isAppInstalled || !showBanner || view !== 'home') {
+  // Final render condition: Only show if not installed, not dismissed, and on the home screen.
+  if (isAppInstalled || isDismissed || view !== 'home') {
     return null;
   }
 
