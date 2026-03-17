@@ -3,24 +3,27 @@ import { useState, useEffect } from 'react';
 const InstallPrompt = () => {
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event) => {
       event.preventDefault();
       setInstallPromptEvent(event);
+      setShowInstallBanner(true);
     };
 
     const handleAppInstalled = () => {
       setInstallPromptEvent(null);
       setIsAppInstalled(true);
+      setShowInstallBanner(false);
     };
 
-    // Check if the app is already installed when the component mounts
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsAppInstalled(true);
     } else {
       window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.addEventListener('appinstalled', handleAppInstalled);
+      setShowInstallBanner(true); // Always show banner if not installed
     }
 
     return () => {
@@ -30,18 +33,21 @@ const InstallPrompt = () => {
   }, []);
 
   const handleInstallClick = async () => {
-    if (!installPromptEvent) {
-      return;
+    if (installPromptEvent) {
+      installPromptEvent.prompt();
+      const { outcome } = await installPromptEvent.userChoice;
+      if (outcome === 'accepted') {
+        setIsAppInstalled(true);
+      }
+      setInstallPromptEvent(null);
+      setShowInstallBanner(false);
+    } else {
+      // Provide instructions for manual installation
+      alert('브라우저 메뉴에서 \'홈 화면에 추가\'를 선택하여 설치할 수 있습니다.');
     }
-    installPromptEvent.prompt();
-    const { outcome } = await installPromptEvent.userChoice;
-    if (outcome === 'accepted') {
-      setIsAppInstalled(true);
-    }
-    setInstallPromptEvent(null);
   };
 
-  if (isAppInstalled || !installPromptEvent) {
+  if (isAppInstalled || !showInstallBanner) {
     return null;
   }
 
@@ -77,7 +83,7 @@ const InstallPrompt = () => {
           fontWeight: 'bold',
         }}
       >
-        설치
+        {installPromptEvent ? '설치' : '설치 안내'}
       </button>
     </div>
   );
