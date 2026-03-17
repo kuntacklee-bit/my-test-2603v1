@@ -3,63 +3,63 @@ import { useState, useEffect } from 'react';
 const InstallPrompt = ({ view }) => {
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
-  // This state will control the immediate visibility of the banner.
-  const [showBanner, setShowBanner] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
-  // This effect runs once to set up the environment.
   useEffect(() => {
-    // 1. Check if the app is already in standalone mode.
+    // 앱이 이미 설치되었는지 확인
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsAppInstalled(true);
       return;
     }
 
-    // 2. Add the event listener for the install prompt.
+    // 세션 중에 배너가 이미 표시되었는지 확인
+    const hasBeenShown = sessionStorage.getItem('installBannerShown') === 'true';
+    if (hasBeenShown) {
+      return;
+    }
+
     const handleBeforeInstallPrompt = (event) => {
       event.preventDefault();
       setInstallPromptEvent(event);
     };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
-  }, []); // Run only on mount.
+  }, []); // 이 effect는 마운트 시 한 번만 실행됩니다.
 
-  // This effect reacts to changes to decide if the banner should be shown or hidden.
   useEffect(() => {
-    // Check the session storage to see if we've already shown the banner.
-    const hasBeenShownThisSession = sessionStorage.getItem('installBannerShown') === 'true';
-
-    // Conditions to show the banner:
-    const shouldShow = 
-      view === 'home' &&         // Must be on the home screen
-      !isAppInstalled &&         // App must not be installed
-      !hasBeenShownThisSession &&// Banner must not have been shown this session
-      !!installPromptEvent;      // The install prompt event must be available
-
-    if (shouldShow) {
-      // If we should show it, update the state and mark it as shown in session storage.
-      setShowBanner(true);
+    const hasBeenShown = sessionStorage.getItem('installBannerShown') === 'true';
+    
+    // 배너를 표시할 조건:
+    // 1. 앱이 설치되지 않았어야 합니다.
+    // 2. 현재 세션에서 배너가 표시된 적이 없어야 합니다.
+    // 3. 현재 view가 'home'이어야 합니다.
+    // 4. PWA 설치 이벤트가 준비되어야 합니다.
+    if (!isAppInstalled && !hasBeenShown && view === 'home' && installPromptEvent) {
+      setIsVisible(true);
+      // 배너가 표시되면 세션 스토리지에 기록합니다.
       sessionStorage.setItem('installBannerShown', 'true');
-    } else {
-      // In all other cases (e.g., navigating away from home), hide the banner.
-      setShowBanner(false);
+    } else if (view !== 'home' && isVisible) {
+      // 다른 화면으로 이동하면 배너를 숨깁니다.
+      setIsVisible(false);
     }
-  }, [view, installPromptEvent, isAppInstalled]); // Re-evaluate when these change.
+  }, [view, installPromptEvent, isAppInstalled, isVisible]);
 
   const handleInstallClick = async () => {
-    // Hide the banner on interaction.
-    setShowBanner(false);
+    // 설치 버튼을 클릭하면 배너를 숨깁니다.
+    setIsVisible(false);
 
     if (installPromptEvent) {
       installPromptEvent.prompt();
       const { outcome } = await installPromptEvent.userChoice;
       if (outcome === 'accepted') {
-        setIsAppInstalled(true); // From now on, the banner won't show.
+        setIsAppInstalled(true);
       }
     } else {
-      // Fallback for manual installation instructions.
+      // 설치 프롬프트가 지원되지 않는 경우 수동 설치 안내
       const userAgent = navigator.userAgent || navigator.vendor || window.opera;
       if (/android/i.test(userAgent)) {
         alert('브라우저 메뉴(우측 상단 ⋮)에서 \'홈 화면에 추가\'를 선택하여 설치하세요.');
@@ -69,12 +69,10 @@ const InstallPrompt = ({ view }) => {
     }
   };
 
-  // If the banner is not supposed to be shown, render nothing.
-  if (!showBanner) {
+  if (!isVisible) {
     return null;
   }
 
-  // Otherwise, render the banner.
   return (
     <div
       data-install-banner
