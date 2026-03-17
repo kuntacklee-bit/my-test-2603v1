@@ -4,7 +4,6 @@ import { db } from './firebase';
 import {
   doc, onSnapshot, setDoc, getDoc
 } from 'firebase/firestore';
-import InstallPrompt from './InstallPrompt';
 
 // ─── Constants ───────────────────────────────────────────────────────────────────
 const MAX_FAIL = 5;
@@ -586,9 +585,6 @@ export default function App() {
 
       {/* Sync Indicator */}
       {syncing && <div style={S.syncBadge}>☁️ 저장 중...</div>}
-
-      {/* PWA Install Banner */}
-      <InstallPrompt view={view} />
 
       {/* iOS Install Guide */}
       <IOSInstallBanner />
