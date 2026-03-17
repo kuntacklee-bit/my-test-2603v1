@@ -3,23 +3,18 @@ import { useState, useEffect } from 'react';
 const InstallPrompt = ({ view }) => {
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
+  // This state will control the immediate visibility of the banner.
+  const [showBanner, setShowBanner] = useState(false);
 
-  // A single state to track if the banner should be hidden for this session.
-  // Initialize from sessionStorage.
-  const [isDismissed, setIsDismissed] = useState(
-    () => sessionStorage.getItem('installBannerDismissed') === 'true'
-  );
-
-  // This effect runs once on mount to set up listeners.
+  // This effect runs once to set up the environment.
   useEffect(() => {
-    // If already installed or dismissed, do nothing.
-    if (isAppInstalled || isDismissed) return;
-
+    // 1. Check if the app is already in standalone mode.
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsAppInstalled(true);
       return;
     }
 
+    // 2. Add the event listener for the install prompt.
     const handleBeforeInstallPrompt = (event) => {
       event.preventDefault();
       setInstallPromptEvent(event);
@@ -29,33 +24,42 @@ const InstallPrompt = ({ view }) => {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
-  }, [isAppInstalled, isDismissed]);
+  }, []); // Run only on mount.
 
-  // This effect runs when the view changes, to dismiss the banner for the session
-  // after the user navigates away from the home screen.
+  // This effect reacts to changes to decide if the banner should be shown or hidden.
   useEffect(() => {
-    // If not on home view AND the banner has not been dismissed yet
-    if (view !== 'home' && !isDismissed) {
-      // Dismiss it for the rest of the session.
-      sessionStorage.setItem('installBannerDismissed', 'true');
-      setIsDismissed(true);
+    // Check the session storage to see if we've already shown the banner.
+    const hasBeenShownThisSession = sessionStorage.getItem('installBannerShown') === 'true';
+
+    // Conditions to show the banner:
+    const shouldShow = 
+      view === 'home' &&         // Must be on the home screen
+      !isAppInstalled &&         // App must not be installed
+      !hasBeenShownThisSession &&// Banner must not have been shown this session
+      !!installPromptEvent;      // The install prompt event must be available
+
+    if (shouldShow) {
+      // If we should show it, update the state and mark it as shown in session storage.
+      setShowBanner(true);
+      sessionStorage.setItem('installBannerShown', 'true');
+    } else {
+      // In all other cases (e.g., navigating away from home), hide the banner.
+      setShowBanner(false);
     }
-  }, [view, isDismissed]);
+  }, [view, installPromptEvent, isAppInstalled]); // Re-evaluate when these change.
 
   const handleInstallClick = async () => {
-    // When user interacts, dismiss it permanently for the session.
-    if (!isDismissed) {
-      sessionStorage.setItem('installBannerDismissed', 'true');
-      setIsDismissed(true);
-    }
+    // Hide the banner on interaction.
+    setShowBanner(false);
 
     if (installPromptEvent) {
       installPromptEvent.prompt();
       const { outcome } = await installPromptEvent.userChoice;
       if (outcome === 'accepted') {
-        setIsAppInstalled(true);
+        setIsAppInstalled(true); // From now on, the banner won't show.
       }
     } else {
+      // Fallback for manual installation instructions.
       const userAgent = navigator.userAgent || navigator.vendor || window.opera;
       if (/android/i.test(userAgent)) {
         alert('브라우저 메뉴(우측 상단 ⋮)에서 \'홈 화면에 추가\'를 선택하여 설치하세요.');
@@ -65,11 +69,12 @@ const InstallPrompt = ({ view }) => {
     }
   };
 
-  // Final render condition: Only show if not installed, not dismissed, and on the home screen.
-  if (isAppInstalled || isDismissed || view !== 'home') {
+  // If the banner is not supposed to be shown, render nothing.
+  if (!showBanner) {
     return null;
   }
 
+  // Otherwise, render the banner.
   return (
     <div
       data-install-banner
