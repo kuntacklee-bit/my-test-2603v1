@@ -18,12 +18,17 @@ const InstallPrompt = () => {
       setShowInstallBanner(false);
     };
 
+    // Check if the app is already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsAppInstalled(true);
     } else {
       window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.addEventListener('appinstalled', handleAppInstalled);
-      setShowInstallBanner(true); // Always show banner if not installed
+      // Show banner if not installed and on a non-iOS device or if it's a standalone PWA on iOS
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (!isIOS || window.navigator.standalone) {
+        setShowInstallBanner(true);
+      }
     }
 
     return () => {
@@ -31,6 +36,17 @@ const InstallPrompt = () => {
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
+
+  const getManualInstallMessage = () => {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    if (/android/i.test(userAgent)) {
+      return '브라우저 메뉴(우측 상단 ⋮)에서 \'홈 화면에 추가\'를 선택하여 설치하세요.';
+    }
+    if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+      return '하단 공유 버튼(↑)을 탭하고 \'홈 화면에 추가\'를 선택하여 설치하세요.';
+    }
+    return '브라우저 메뉴에서 \'홈 화면에 추가\'하여 앱을 설치할 수 있습니다.';
+  };
 
   const handleInstallClick = async () => {
     if (installPromptEvent) {
@@ -42,8 +58,7 @@ const InstallPrompt = () => {
       setInstallPromptEvent(null);
       setShowInstallBanner(false);
     } else {
-      // Provide instructions for manual installation
-      alert('브라우저 메뉴(우측 상단 ⋮)에서 \'홈 화면에 추가\'를 선택하여 설치할 수 있습니다.');
+      alert(getManualInstallMessage());
     }
   };
 
