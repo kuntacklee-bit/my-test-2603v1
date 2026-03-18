@@ -162,6 +162,38 @@ function Inp({ label, type = 'text', placeholder, value, onChange, onEnter, erro
   );
 }
 
+// ─── PWA 설치 프롬프트 ────────────────────────────────────────────────────────
+function useInstallPrompt() {
+  const [prompt, setPrompt] = useState(null)
+  const [isInstalled, setIsInstalled] = useState(false)
+
+  useEffect(() => {
+    // 이미 설치된 경우
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true)
+      return
+    }
+    const handler = e => { e.preventDefault(); setPrompt(e) }
+    window.addEventListener('beforeinstallprompt', handler)
+    window.addEventListener('appinstalled', () => { setIsInstalled(true); setPrompt(null) })
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  const install = async () => {
+    if (!prompt) return
+    prompt.prompt()
+    const { outcome } = await prompt.userChoice
+    if (outcome === 'accepted') setPrompt(null)
+  }
+
+  const dismiss = () => {
+    setPrompt(null)
+  }
+
+  return { prompt, isInstalled, install, dismiss }
+}
+
+
 // ─── iOS Install Banner ────────────────────────────────────────────────────────
 function IOSInstallBanner() {
   const [show, setShow] = useState(false);
