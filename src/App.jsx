@@ -777,7 +777,7 @@ export default function App() {
       </header>
       
       {installPrompt && (
-        <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 1000 }}>
+        <div style={{ position: 'fixed', bottom: 42, left: '50%', transform: 'translateX(-50%)', zIndex: 1000 }}>
         <button style={{ ...S.btn, width: 'auto', padding: '12px 24px' }} onClick={handleInstallClick}>
         앱으로 설치하기
         </button>
