@@ -117,7 +117,7 @@ function HistoryTab({ transactions, members, onExport, onResetAll }) {
                   <div><div style={{ fontSize: 12, fontWeight: 700 }}>{f?.avatar} {f?.name}</div><div style={{ fontSize: 10, color: '#78350f' }}>{f?.team}</div></div>
                   <div><div style={{ fontSize: 12, fontWeight: 700 }}>{t2?.avatar} {t2?.name}</div><div style={{ fontSize: 10, color: '#78350f' }}>{t2?.team}</div></div>
                   <div style={{ textAlign: 'center', fontSize: 16 }}>🪙</div>
-                  <div style={{ fontSize: 12, color: '#d97706', fontStyle: 'italic', wordBreak: 'break-all' }}>&quot;{tx.message}&quot;</div>
+                  <div style={{ fontSize: 12, color: '#d97706', fontStyle: 'italic', wordBreak: 'break-all' }}>"{tx.message}"</div>
                 </div>
               );
             })}
@@ -205,6 +205,7 @@ export default function App() {
   const [adminTab, setAdminTab] = useState('coins');
   const localUser = useRef(null); // Logged-in user ID (local session)
   const localAdmin = useRef(false); // Is admin? (local session)
+  const [installPrompt, setInstallPrompt] = useState(null);
 
   // ── Login Form ──
   const [loginEmail, setLoginEmail] = useState('');
@@ -256,8 +257,18 @@ export default function App() {
       console.error('Firestore connection error:', err);
       setAppState({ ...INIT_STATE });
     });
+    
+    const handler = e => {
+      e.preventDefault();
+      console.log('beforeinstallprompt event fired');
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
 
-    return () => unsub();
+    return () => {
+      unsub();
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
   }, []);
 
   // ── Firestore Persist ──────────────────────────────────────────────────────────
@@ -288,6 +299,21 @@ export default function App() {
     setResetId(null); setResetPw('');
     setAdminChgOld(''); setAdminChgNew(''); setAdminChgNew2(''); setAdminChgErr('');
     setMbrChgOld(''); setMbrChgNew(''); setMbrChgNew2(''); setMbrChgErr('');
+  };
+  
+  const handleInstallClick = () => {
+    if (!installPrompt) {
+        return;
+    }
+    installPrompt.prompt();
+    installPrompt.userChoice.then(choiceResult => {
+        if (choiceResult.outcome === 'accepted') {
+            console.log('User accepted the A2HS prompt');
+        } else {
+            console.log('User dismissed the A2HS prompt');
+        }
+        setInstallPrompt(null);
+    });
   };
 
   if (!appState) return (
@@ -737,6 +763,15 @@ export default function App() {
           )}
         </div>
       </header>
+      
+      {installPrompt && (
+        <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 1000 }}>
+        <button style={{ ...S.btn, width: 'auto', padding: '12px 24px' }} onClick={handleInstallClick}>
+        앱으로 설치하기
+        </button>
+        </div>
+      )}
+
 
       {/* ── Navigation ── */}
       <nav style={S.nav}>
@@ -785,7 +820,7 @@ export default function App() {
                 {!isDistributed && <div style={S.warnBanner}>⏳ 이번 달 코인이 아직 지급되지 않았습니다.</div>}
                 {myReceived.length > 0 && (
                   <div style={S.card}><h3 style={S.cTitle}>💌 받은 감사 메세지</h3>
-                    {myReceived.map(tx => { const f = members.find(m => m.id === tx.fromId); return (<div key={tx.id} style={S.txItem}><span style={{ fontSize: 20 }}>{f?.avatar}</span><div style={{ flex: 1 }}><div style={S.txFrom}>{f?.name}</div><div style={S.txMsg}>&quot;{tx.message}&quot;</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>); })}
+                    {myReceived.map(tx => { const f = members.find(m => m.id === tx.fromId); return (<div key={tx.id} style={S.txItem}><span style={{ fontSize: 20 }}>{f?.avatar}</span><div style={{ flex: 1 }}><div style={S.txFrom}>{f?.name}</div><div style={S.txMsg}>"{tx.message}"</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>); })}
                   </div>
                 )}
                 <button style={S.btn} onClick={() => setView('send')}>🎁 감사 코인 보내기</button>
@@ -841,11 +876,11 @@ export default function App() {
               : <>
                 <div style={S.card}><h3 style={S.cTitle}>💌 받은 코인 ({myReceived.length})</h3>
                   {myReceived.length === 0 ? <p style={{ color: '#78350f', fontSize: 13 }}>아직 없습니다</p>
-                    : myReceived.map(tx => { const f = members.find(m => m.id === tx.fromId); return (<div key={tx.id} style={S.txItem}><span style={{ fontSize: 20 }}>{f?.avatar}</span><div style={{ flex: 1 }}><div style={S.txFrom}>{f?.name}님으로부터</div><div style={S.txMsg}>&quot;{tx.message}&quot;</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>); })}
+                    : myReceived.map(tx => { const f = members.find(m => m.id === tx.fromId); return (<div key={tx.id} style={S.txItem}><span style={{ fontSize: 20 }}>{f?.avatar}</span><div style={{ flex: 1 }}><div style={S.txFrom}>{f?.name}님으로부터</div><div style={S.txMsg}>"{tx.message}"</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>); })}
                 </div>
                 <div style={S.card}><h3 style={S.cTitle}>🎁 보낸 코인 ({mySent.length})</h3>
                   {mySent.length === 0 ? <p style={{ color: '#78350f', fontSize: 13 }}>아직 없습니다</p>
-                    : mySent.map(tx => { const t2 = members.find(m => m.id === tx.toId); return (<div key={tx.id} style={S.txItem}><span style={{ fontSize: 20 }}>{t2?.avatar}</span><div style={{ flex: 1 }}><div style={S.txFrom}>{t2?.name}님에게</div><div style={S.txMsg}>&quot;{tx.message}&quot;</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>); })}
+                    : mySent.map(tx => { const t2 = members.find(m => m.id === tx.toId); return (<div key={tx.id} style={S.txItem}><span style={{ fontSize: 20 }}>{t2?.avatar}</span><div style={{ flex: 1 }}><div style={S.txFrom}>{t2?.name}님에게</div><div style={S.txMsg}>"{tx.message}"</div><div style={S.txDate}>{fmtDate(tx.date)}</div></div><span>🪙</span></div>); })}
                 </div>
               </>
             }
