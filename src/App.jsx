@@ -29,6 +29,7 @@ const INIT_STATE = {
   transactions: [],
   allotments: {},
   distributed: {},
+  announcements: [],
 };
 
 // ─── Utilities ───────────────────────────────────────────────────────────────────
@@ -58,6 +59,103 @@ async function saveExcel(wb, fileName) {
   const url = URL.createObjectURL(blob), a = document.createElement('a');
   a.href = url; a.download = fileName; document.body.appendChild(a); a.click();
   document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// ─── Announcements ───────────────────────────────────────────────────────────────────
+function Announcements({ announcements, isAdmin, onAdd, onEdit, onDelete, onDeleteAll }) {
+  const [newAnnouncement, setNewAnnouncement] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editingText, setEditingText] = useState('');
+
+  const handleAdd = () => {
+    if (newAnnouncement.trim()) {
+      onAdd(newAnnouncement.trim());
+      setNewAnnouncement('');
+    }
+  };
+
+  const handleEdit = (ann) => {
+    setEditingId(ann.id);
+    setEditingText(ann.text);
+  };
+
+  const handleSave = (id) => {
+    if (editingText.trim()) {
+      onEdit(id, editingText.trim());
+      setEditingId(null);
+      setEditingText('');
+    }
+  };
+
+  return (
+    <div style={{ ...S.card, border: '1px solid rgba(139, 92, 246, 0.4)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h3 style={{ ...S.cTitle, color: '#a78bfa', margin: 0 }}>📢 공지사항</h3>
+        {isAdmin && (
+          <button 
+            style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#f87171', padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+            onClick={onDeleteAll}
+          >
+            전체 삭제
+          </button>
+        )}
+      </div>
+      
+      {isAdmin && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <input 
+            type="text" 
+            style={{ ...S.inp, flex: 1 }} 
+            placeholder="새 공지사항을 입력하세요..." 
+            value={newAnnouncement} 
+            onChange={e => setNewAnnouncement(e.target.value)} 
+            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+          />
+          <button 
+            style={{ background: 'rgba(139, 92, 246, 0.2)', border: '1px solid rgba(139, 92, 246, 0.4)', color: '#c4b5fd', padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+            onClick={handleAdd}
+          >
+            작성
+          </button>
+        </div>
+      )}
+
+      <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+        {announcements.length === 0 ? (
+          <p style={{ color: '#6b7280', fontSize: 13, textAlign: 'center', margin: '16px 0' }}>공지사항이 없습니다.</p>
+        ) : (
+          [...announcements].reverse().map((ann) => (
+            <div key={ann.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '10px 0', fontSize: 13 }}>
+              {editingId === ann.id ? (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    style={{ ...S.inp, flex: 1 }}
+                    value={editingText}
+                    onChange={(e) => setEditingText(e.target.value)}
+                  />
+                  <button onClick={() => handleSave(ann.id)}>저장</button>
+                </div>
+              ) : (
+                <>
+                  <p style={{ margin: 0, color: '#e5e7eb' }}>{ann.text}</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 11, color: '#9ca3af', textAlign: 'right' }}>
+                    {fmtDate(ann.date)}
+                    {isAdmin && (
+                      <>
+                        <button onClick={() => handleEdit(ann)}>수정</button>
+                        <button onClick={() => onDelete(ann.id)}>삭제</button>
+                      </>
+                    )}
+                  </p>
+                </>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ─── HistoryTab ───────────────────────────────────────────────────────────────────
@@ -331,7 +429,7 @@ export default function App() {
   const [modal, setModal] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null); // *** Added: Custom confirm modal state
   const [notif, setNotif] = useState(null);
-  const [adminTab, setAdminTab] = useState('coins');
+  const [adminTab, setAdminTab] = useState('announcements');
   const localUser = useRef(null); // Logged-in user ID (local session)
   const localAdmin = useRef(false); // Is admin? (local session)
   const { prompt: installPrompt, install: handleInstallClick } = useInstallPrompt();
@@ -372,6 +470,7 @@ export default function App() {
   // ── Send ──
   const [sendTo, setSendTo] = useState('');
   const [sendMsg, setSendMsg] = useState('');
+  const [newAnnouncement, setNewAnnouncement] = useState('');
 
   // ── Firestore Real-time Listener ────────────────────────────────────────────────
   useEffect(() => {
@@ -431,7 +530,7 @@ export default function App() {
   );
 
   // ── Convenience Variables ────────────────────────────────────────────────────────
-  const { members, transactions, allotments, distributed } = appState;
+  const { members, transactions, allotments, distributed, announcements } = appState;
   const isAdmin = localAdmin.current;
   const currentUser = members.find(m => m.id === localUser.current) ?? null;
   const cm = getCurrentMonth();
@@ -638,6 +737,38 @@ export default function App() {
     persist({ allotments: newAllot });
     notify(`${members.find(x => x.id === memberId)?.name}님에게 ${amount}개 지급.`);
   };
+  
+  const addAnnouncement = (text) => {
+    const newAnn = { id: `ann-${Date.now()}`, text, date: todayStr() };
+    const newAnnouncements = [...(appState.announcements || []), newAnn];
+    persist({ announcements: newAnnouncements });
+    notify('공지사항이 추가되었습니다.');
+  };
+
+  const editAnnouncement = (id, newText) => {
+    const newAnnouncements = appState.announcements.map(ann =>
+      ann.id === id ? { ...ann, text: newText } : ann
+    );
+    persist({ announcements: newAnnouncements });
+    notify('공지사항이 수정되었습니다.');
+  };
+
+  const deleteAnnouncement = (id) => {
+    const newAnnouncements = appState.announcements.filter(ann => ann.id !== id);
+    persist({ announcements: newAnnouncements });
+    notify('공지사항이 삭제되었습니다.');
+  };
+
+  const deleteAllAnnouncements = () => {
+    setConfirmModal({
+      message: '모든 공지사항을 정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+      onConfirm: () => {
+        persist({ announcements: [] });
+        notify('모든 공지사항이 삭제되었습니다.');
+      }
+    });
+  };
+
 
   // *** Added: Function to reset all member data ***
   const resetAllMembersAndData = () => {
@@ -918,6 +1049,14 @@ export default function App() {
                     {[...Array(Math.max(myCoins, 3))].map((_, i) => <span key={i} style={{ fontSize: 24, opacity: i < myCoins ? 1 : 0.15 }}>🪙</span>)}
                   </div>
                 </div>
+                <Announcements 
+                  announcements={announcements || []} 
+                  isAdmin={isAdmin} 
+                  onAdd={addAnnouncement} 
+                  onEdit={editAnnouncement}
+                  onDelete={deleteAnnouncement}
+                  onDeleteAll={deleteAllAnnouncements} 
+                />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                   {[{ n: mySent.length, l: '보낸 코인' }, { n: myReceived.length, l: '받은 코인' }, { n: myCoins, l: '남은 코인', gold: true }].map(s => (
                     <div key={s.l} style={S.statCard}><div style={{ fontSize: 26, fontWeight: 900, color: s.gold ? '#fbbf24' : '#fef3c7', lineHeight: 1 }}>{s.n}</div><div style={{ fontSize: 11, color: '#92400e', marginTop: 5, fontWeight: 600 }}>{s.l}</div></div>
@@ -936,6 +1075,7 @@ export default function App() {
                 <div style={{ fontSize: 72 }}>🪙</div>
                 <h1 style={{ margin: 0, fontSize: 32, fontWeight: 900, color: '#fbbf24' }}>감사 코인</h1>
                 <p style={{ color: '#d97706', lineHeight: 1.8, fontSize: 15, margin: 0 }}>동료에게 감사한 마음을 코인으로 전달하세요.<br />관리자가 매월 코인을 수동 지급합니다.</p>
+                <Announcements announcements={announcements || []} isAdmin={false} />
                 <div style={{ display: 'flex', gap: 10, marginTop: 8, width: '100%', maxWidth: 320 }}>
                   <button style={{ ...S.btn, flex: 1 }} onClick={() => setModal('login')}>로그인</button>
                   <button style={{ ...S.btn, background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)', flex: 1 }} onClick={() => setModal('register')}>회원가입</button>
@@ -1051,11 +1191,23 @@ export default function App() {
               <>
                 <h2 style={{ ...S.pTitle, color: '#f87171' }}>⚙️ 관리자 패널</h2>
                 <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 4, gap: 4, overflowX: 'auto' }}>
-                  {[{ id: 'coins', l: '🪙 코인' }, { id: 'members', l: '👥 회원' }, { id: 'txHistory', l: '📋 이력' }, { id: 'lottery', l: '🎟️ 추첨' }, { id: 'stats', l: '📊 통계' }, { id: 'settings', l: '⚙️ 설정' }].map(t => (
+                  {[{ id: 'announcements', l: '📢 공지' }, { id: 'coins', l: '🪙 코인' }, { id: 'members', l: '👥 회원' }, { id: 'txHistory', l: '📋 이력' }, { id: 'lottery', l: '🎟️ 추첨' }, { id: 'stats', l: '📊 통계' }, { id: 'settings', l: '⚙️ 설정' }].map(t => (
                     <button key={t.id} style={{ flex: '0 0 auto', padding: '9px 12px', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: 'pointer', background: adminTab === t.id ? 'rgba(251,191,36,0.2)' : 'transparent', color: adminTab === t.id ? '#fbbf24' : '#78350f', whiteSpace: 'nowrap' }}
                       onClick={() => setAdminTab(t.id)}>{t.l}</button>
                   ))}
                 </div>
+
+                {/* ── Announcements Tab ── */}
+                {adminTab === 'announcements' && (
+                  <Announcements
+                    announcements={announcements || []}
+                    isAdmin={isAdmin}
+                    onAdd={addAnnouncement}
+                    onEdit={editAnnouncement}
+                    onDelete={deleteAnnouncement}
+                    onDeleteAll={deleteAllAnnouncements}
+                  />
+                )}
 
                 {/* ── Coins Tab ── */}
                 {adminTab === 'coins' && (
