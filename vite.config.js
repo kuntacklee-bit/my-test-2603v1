@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/*.png'],
+      includeAssets: ['icon/*.svg', 'icon/*.png'],
       manifest: {
         name: '감사 코인',
         short_name: '감사코인',
@@ -20,17 +20,17 @@ export default defineConfig({
         lang: 'ko',
         icons: [
           {
-            src: '/icons/icon-192x192.png',
+            src: '/icon/icon-192x192.png',
             sizes: '192x192',
             type: 'image/png',
           },
           {
-            src: '/icons/icon-512x512.png',
+            src: '/icon/icon-512x512.png',
             sizes: '512x512',
             type: 'image/png',
           },
           {
-            src: '/icons/icon-maskable-512x512.png',
+            src: '/icon/icon-maskable-512x512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
