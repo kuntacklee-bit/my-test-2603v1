@@ -128,6 +128,100 @@ function HistoryTab({ transactions, members, onExport, onResetAll }) {
   );
 }
 
+// ─── LotteryTab ───────────────────────────────────────────────────────────────────
+function LotteryTab({ transactions, members, notify }) {
+    const [startDate, setStartDate] = useState(todayStr());
+    const [endDate, setEndDate] = useState(todayStr());
+    const [winner, setWinner] = useState(null);
+    const [isDrawing, setIsDrawing] = useState(false);
+
+    const handleDraw = () => {
+        if (!startDate || !endDate) {
+            notify('추첨 시작일과 종료일을 선택해주세요.', 'err');
+            return;
+        }
+
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999); 
+
+        const filteredTx = transactions.filter(t => {
+            const txDate = new Date(t.date);
+            return txDate >= start && txDate <= end;
+        });
+
+        if (filteredTx.length === 0) {
+            notify('선택된 기간에 코인 거래 내역이 없습니다.', 'err');
+            setWinner(null);
+            return;
+        }
+
+        const weightedList = [];
+        filteredTx.forEach(tx => {
+            const member = members.find(m => m.id === tx.toId);
+            if (member) {
+                weightedList.push(member);
+            }
+        });
+
+        if (weightedList.length === 0) {
+            notify('코인을 받은 회원이 없습니다.', 'err');
+            setWinner(null);
+            return;
+        }
+        
+        setIsDrawing(true);
+        setWinner(null);
+
+        setTimeout(() => {
+            const randomIndex = Math.floor(Math.random() * weightedList.length);
+            const drawnWinner = weightedList[randomIndex];
+            setWinner(drawnWinner);
+            setIsDrawing(false);
+            notify(`축하합니다! ${drawnWinner.name}님이 당첨되었습니다! 🎉`);
+        }, 2000); 
+    };
+
+    return (
+        <div style={{ ...S.card, border: '1px solid rgba(34, 197, 94, 0.4)' }}>
+            <h3 style={{ ...S.cTitle, color: '#86efac' }}>🎟️ 코인 추첨기</h3>
+            <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 16px' }}>
+                기간을 설정하고 추첨 버튼을 누르면, 해당 기간 동안 코인을 받은 사람 중 한 명을 랜덤으로 추첨합니다. 코인을 많이 받을수록 당첨 확률이 높아집니다.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                <div>
+                    <label style={S.lbl}>추첨 시작일</label>
+                    <input type="date" style={S.inp} value={startDate} onChange={e => setStartDate(e.target.value)} />
+                </div>
+                <div>
+                    <label style={S.lbl}>추첨 종료일</label>
+                    <input type="date" style={S.inp} value={endDate} onChange={e => setEndDate(e.target.value)} />
+                </div>
+            </div>
+            <button
+                style={{ ...S.btn, background: 'linear-gradient(135deg,#22c55e,#16a34a)' }}
+                onClick={handleDraw}
+                disabled={isDrawing}
+            >
+                {isDrawing ? '추첨 중... 🎰' : '🍀 추첨 시작하기'}
+            </button>
+            
+            {isDrawing && (
+                <div style={{ textAlign: 'center', padding: '20px 0', fontSize: 48 }}>🎰</div>
+            )}
+
+            {winner && (
+                <div style={{ marginTop: 20, background: 'rgba(251,191,36,0.1)', borderRadius: 12, padding: 16, textAlign: 'center' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#fbbf24' }}>🎉 당첨자 🎉</div>
+                    <div style={{ fontSize: 36, margin: '8px 0' }}>{winner.avatar}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: '#fef3c7' }}>{winner.name}</div>
+                    <div style={{ fontSize: 13, color: '#92400e' }}>{winner.team} · {winner.part}</div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── IndividualRow ──────────────────────────────────────────────────────────
 function IndividualRow({ member, currentCoins, onGive }) {
   const [amt, setAmt] = useState(3);
@@ -957,7 +1051,7 @@ export default function App() {
               <>
                 <h2 style={{ ...S.pTitle, color: '#f87171' }}>⚙️ 관리자 패널</h2>
                 <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 4, gap: 4, overflowX: 'auto' }}>
-                  {[{ id: 'coins', l: '🪙 코인' }, { id: 'members', l: '👥 회원' }, { id: 'txHistory', l: '📋 이력' }, { id: 'stats', l: '📊 통계' }, { id: 'settings', l: '⚙️ 설정' }].map(t => (
+                  {[{ id: 'coins', l: '🪙 코인' }, { id: 'members', l: '👥 회원' }, { id: 'txHistory', l: '📋 이력' }, { id: 'lottery', l: '🎟️ 추첨' }, { id: 'stats', l: '📊 통계' }, { id: 'settings', l: '⚙️ 설정' }].map(t => (
                     <button key={t.id} style={{ flex: '0 0 auto', padding: '9px 12px', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: 'pointer', background: adminTab === t.id ? 'rgba(251,191,36,0.2)' : 'transparent', color: adminTab === t.id ? '#fbbf24' : '#78350f', whiteSpace: 'nowrap' }}
                       onClick={() => setAdminTab(t.id)}>{t.l}</button>
                   ))}
@@ -1105,6 +1199,15 @@ export default function App() {
                       onConfirm: resetAllTransactions
                     })}
                   />
+                )}
+                
+                {/* ── Lottery Tab ── */}
+                {adminTab === 'lottery' && (
+                    <LotteryTab
+                        transactions={transactions}
+                        members={members}
+                        notify={notify}
+                    />
                 )}
 
                 {/* ── Stats Tab ── */}
