@@ -168,13 +168,12 @@ function useInstallPrompt() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // 이미 설치된 경우 - 이 부분을 주석 처리하여 테스트 시 항상 배너가 보이도록 함
-    /*
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if (isStandalone) {
       setIsInstalled(true);
       return;
     }
-    */
+
     const handler = e => { e.preventDefault(); console.log('beforeinstallprompt event fired'); setPrompt(e); };
     window.addEventListener('beforeinstallprompt', handler);
     window.addEventListener('appinstalled', () => { setIsInstalled(true); setPrompt(null); });
@@ -201,10 +200,11 @@ function IOSInstallBanner() {
   const [show, setShow] = useState(false);
   useEffect(() => {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    // const isStandalone = window.matchMedia('(display-mode: standalone)').matches; // 설치 여부 체크 제거
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     const dismissed = sessionStorage.getItem('ios-banner-dismissed');
-    // if (isIOS && !isStandalone && !dismissed) setShow(true);
-    if (isIOS && !dismissed) setShow(true); // 설치 여부와 관계 없이 배너 표시
+    if (isIOS && !isStandalone && !dismissed) {
+      setShow(true);
+    }
   }, []);
   if (!show) return null;
   return (
