@@ -164,33 +164,35 @@ function Inp({ label, type = 'text', placeholder, value, onChange, onEnter, erro
 
 // ─── PWA 설치 프롬프트 ────────────────────────────────────────────────────────
 function useInstallPrompt() {
-  const [prompt, setPrompt] = useState(null)
-  const [isInstalled, setIsInstalled] = useState(false)
+  const [prompt, setPrompt] = useState(null);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // 이미 설치된 경우
+    // 이미 설치된 경우 - 이 부분을 주석 처리하여 테스트 시 항상 배너가 보이도록 함
+    /*
     if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true)
-      return
+      setIsInstalled(true);
+      return;
     }
-    const handler = e => { e.preventDefault(); setPrompt(e) }
-    window.addEventListener('beforeinstallprompt', handler)
-    window.addEventListener('appinstalled', () => { setIsInstalled(true); setPrompt(null) })
-    return () => window.removeEventListener('beforeinstallprompt', handler)
-  }, [])
+    */
+    const handler = e => { e.preventDefault(); console.log('beforeinstallprompt event fired'); setPrompt(e); };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => { setIsInstalled(true); setPrompt(null); });
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
 
   const install = async () => {
-    if (!prompt) return
-    prompt.prompt()
-    const { outcome } = await prompt.userChoice
-    if (outcome === 'accepted') setPrompt(null)
-  }
+    if (!prompt) return;
+    prompt.prompt();
+    const { outcome } = await prompt.userChoice;
+    if (outcome === 'accepted') setPrompt(null);
+  };
 
   const dismiss = () => {
-    setPrompt(null)
-  }
+    setPrompt(null);
+  };
 
-  return { prompt, isInstalled, install, dismiss }
+  return { prompt, isInstalled, install, dismiss };
 }
 
 
@@ -199,9 +201,10 @@ function IOSInstallBanner() {
   const [show, setShow] = useState(false);
   useEffect(() => {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    // const isStandalone = window.matchMedia('(display-mode: standalone)').matches; // 설치 여부 체크 제거
     const dismissed = sessionStorage.getItem('ios-banner-dismissed');
-    if (isIOS && !isStandalone && !dismissed) setShow(true);
+    // if (isIOS && !isStandalone && !dismissed) setShow(true);
+    if (isIOS && !dismissed) setShow(true); // 설치 여부와 관계 없이 배너 표시
   }, []);
   if (!show) return null;
   return (
@@ -237,7 +240,7 @@ export default function App() {
   const [adminTab, setAdminTab] = useState('coins');
   const localUser = useRef(null); // Logged-in user ID (local session)
   const localAdmin = useRef(false); // Is admin? (local session)
-  const [installPrompt, setInstallPrompt] = useState(null);
+  const { prompt: installPrompt, install: handleInstallClick } = useInstallPrompt();
 
   // ── Login Form ──
   const [loginEmail, setLoginEmail] = useState('');
@@ -290,16 +293,8 @@ export default function App() {
       setAppState({ ...INIT_STATE });
     });
     
-    const handler = e => {
-      e.preventDefault();
-      console.log('beforeinstallprompt event fired');
-      setInstallPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-
     return () => {
       unsub();
-      window.removeEventListener('beforeinstallprompt', handler);
     };
   }, []);
 
@@ -331,21 +326,6 @@ export default function App() {
     setResetId(null); setResetPw('');
     setAdminChgOld(''); setAdminChgNew(''); setAdminChgNew2(''); setAdminChgErr('');
     setMbrChgOld(''); setMbrChgNew(''); setMbrChgNew2(''); setMbrChgErr('');
-  };
-  
-  const handleInstallClick = () => {
-    if (!installPrompt) {
-        return;
-    }
-    installPrompt.prompt();
-    installPrompt.userChoice.then(choiceResult => {
-        if (choiceResult.outcome === 'accepted') {
-            console.log('User accepted the A2HS prompt');
-        } else {
-            console.log('User dismissed the A2HS prompt');
-        }
-        setInstallPrompt(null);
-    });
   };
 
   if (!appState) return (
