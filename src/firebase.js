@@ -1,3 +1,4 @@
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Firebase 설정
 // Firebase 콘솔(https://console.firebase.google.com)에서 프로젝트 생성 후
@@ -6,6 +7,11 @@
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+
+// 임시로 추가 — 확인 후 삭제
+console.log('🔥 PROJECT_ID:', process.env.REACT_APP_FIREBASE_PROJECT_ID);
+console.log('🔥 API_KEY:', process.env.REACT_APP_FIREBASE_API_KEY);
+
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
