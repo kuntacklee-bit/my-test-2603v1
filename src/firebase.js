@@ -8,19 +8,15 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
-// 임시로 추가 — 확인 후 삭제
-console.log('🔥 PROJECT_ID:', process.env.REACT_APP_FIREBASE_PROJECT_ID);
-console.log('🔥 API_KEY:', process.env.REACT_APP_FIREBASE_API_KEY);
-
 
 const firebaseConfig = {
-  apiKey:            process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain:        process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId:         process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket:     process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             process.env.REACT_APP_FIREBASE_APP_ID,
-}
+    apiKey: "AIzaSyC1IcatLvy9k80vjIChcbPs-Iz6RNkygbk",
+    authDomain: "my-test-2603v1.firebaseapp.com",
+    projectId: "my-test-2603v1",
+    storageBucket: "my-test-2603v1.firebasestorage.app",
+    messagingSenderId: "194939487080",
+    appId: "1:194939487080:web:1ece95639034a0e4ce0cdd"
+  }
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
