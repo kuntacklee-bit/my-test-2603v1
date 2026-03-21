@@ -825,6 +825,7 @@ export default function App() {
 
   const sendCoin = () => {
     if (!currentUser || !sendTo || !sendMsg.trim()) return notify('모든 항목을 입력해주세요.', 'err');
+    if (sendMsg.trim().length < 20) return notify('감사 마음을 20글자 이상 표현 부탁드려요.', 'err');
     if (sendTo === currentUser.id) return notify('자신에게 줄 수 없습니다.', 'err');
     const avail = getCoins(currentUser.id, cm);
     if (avail <= 0) return notify('사용 가능한 코인이 없습니다.', 'err');
@@ -1074,7 +1075,7 @@ export default function App() {
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '32px 16px', gap: 16 }}>
                 <div style={{ fontSize: 72 }}>🪙</div>
                 <h1 style={{ margin: 0, fontSize: 32, fontWeight: 900, color: '#fbbf24' }}>감사 코인</h1>
-                <p style={{ color: '#d97706', lineHeight: 1.8, fontSize: 15, margin: 0 }}>동료에게 감사한 마음을 코인으로 전달하세요.<br />관리자가 매월 코인을 수동 지급합니다.</p>
+                <p style={{ color: '#d97706', lineHeight: 1.8, fontSize: 15, margin: 0 }}>동료에게 감사한 마음을 코인으로 전달하세요.<br /></p>
                 <Announcements announcements={announcements || []} isAdmin={false} />
               </div>
             )}
